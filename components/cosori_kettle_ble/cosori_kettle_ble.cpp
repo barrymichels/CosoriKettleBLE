@@ -36,11 +36,11 @@ void CosoriKettleBLE::setup() {
     this->ble_connection_switch_->publish_state(true);
   }
 
-  // Initialize climate state
+  // Initialize climate state (ESPHome climate expects Celsius)
   this->mode = climate::CLIMATE_MODE_OFF;
   this->action = climate::CLIMATE_ACTION_IDLE;
-  this->target_temperature = this->target_setpoint_f_;
-  this->current_temperature = this->current_temp_f_;
+  this->target_temperature = (this->target_setpoint_f_ - 32.0f) * 5.0f / 9.0f;
+  this->current_temperature = (this->current_temp_f_ - 32.0f) * 5.0f / 9.0f;
 }
 
 void CosoriKettleBLE::dump_config() {
@@ -505,11 +505,12 @@ void CosoriKettleBLE::enable_ble_connection(bool enable) {
 climate::ClimateTraits CosoriKettleBLE::traits() {
   auto traits = climate::ClimateTraits();
 
-  // Temperature range (Fahrenheit)
+  // Temperature range in Celsius (ESPHome expects Celsius)
+  // 104°F = 40°C, 212°F = 100°C
   traits.set_supports_current_temperature(true);
-  traits.set_visual_min_temperature(104.0f);
-  traits.set_visual_max_temperature(212.0f);
-  traits.set_visual_temperature_step(1.0f);
+  traits.set_visual_min_temperature(40.0f);
+  traits.set_visual_max_temperature(100.0f);
+  traits.set_visual_temperature_step(0.5f);
 
   // Supported modes
   traits.set_supported_modes({
@@ -544,14 +545,16 @@ void CosoriKettleBLE::control(const climate::ClimateCall &call) {
 
   // Handle target temperature change
   if (call.get_target_temperature().has_value()) {
-    float temp = *call.get_target_temperature();
-    ESP_LOGI(TAG, "Climate: Setting target temperature to %.0f°F", temp);
-    this->target_temperature = temp;
-    this->target_setpoint_f_ = temp;
+    float temp_c = *call.get_target_temperature();
+    // Convert Celsius to Fahrenheit for the kettle
+    float temp_f = temp_c * 9.0f / 5.0f + 32.0f;
+    ESP_LOGI(TAG, "Climate: Setting target temperature to %.1f°C (%.0f°F)", temp_c, temp_f);
+    this->target_temperature = temp_c;
+    this->target_setpoint_f_ = temp_f;
 
     // Update number entity if it exists
     if (this->target_setpoint_number_ != nullptr) {
-      this->target_setpoint_number_->publish_state(temp);
+      this->target_setpoint_number_->publish_state(temp_f);
     }
 
     // If in heat mode, apply the new temperature
@@ -612,15 +615,16 @@ void CosoriKettleBLE::update_entities_() {
 }
 
 void CosoriKettleBLE::update_climate_state_() {
-  // Update current temperature
-  this->current_temperature = this->current_temp_f_;
+  // Update current temperature (convert F to C for ESPHome climate)
+  this->current_temperature = (this->current_temp_f_ - 32.0f) * 5.0f / 9.0f;
 
   // Initialize target temperature from kettle on first status
   if (!this->target_setpoint_initialized_) {
-    this->target_temperature = this->kettle_setpoint_f_;
     this->target_setpoint_f_ = this->kettle_setpoint_f_;
+    this->target_temperature = (this->kettle_setpoint_f_ - 32.0f) * 5.0f / 9.0f;
     this->target_setpoint_initialized_ = true;
-    ESP_LOGI(TAG, "Climate: Initialized target temperature to %.0f°F from kettle", this->target_temperature);
+    ESP_LOGI(TAG, "Climate: Initialized target temperature to %.0f°F (%.1f°C) from kettle",
+             this->target_setpoint_f_, this->target_temperature);
   }
 
   // Update mode based on heating state

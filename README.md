@@ -129,7 +129,7 @@ entity: climate.kettle  # or whatever name you chose
 ```
 
 The thermostat card provides:
-- **Semi-circle temperature slider** (104-212°F)
+- **Semi-circle temperature slider** (40-100°C / 104-212°F)
 - **Current temperature** display
 - **Mode control** (OFF / HEAT)
 - **Action indicator** (IDLE / HEATING)
@@ -138,9 +138,11 @@ The thermostat card provides:
 
 - **OFF mode**: Kettle is idle, not heating
 - **HEAT mode**: Kettle will heat to target temperature
-- **Temperature slider**: Adjust target temperature (104-212°F)
+- **Temperature slider**: Adjust target temperature (40-100°C / 104-212°F)
 - **Current temperature**: Shows actual water temperature
 - **Action**: Shows HEATING when actively warming, IDLE otherwise
+
+**Note:** Home Assistant will display temperatures in your preferred unit (Celsius or Fahrenheit). The kettle natively uses Fahrenheit, and all conversions are handled automatically.
 
 ### Alternative: Individual Entities
 
