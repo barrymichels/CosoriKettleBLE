@@ -35,6 +35,12 @@ void CosoriKettleBLE::setup() {
   if (this->ble_connection_switch_ != nullptr) {
     this->ble_connection_switch_->publish_state(true);
   }
+
+  // Initialize climate state
+  this->mode = climate::CLIMATE_MODE_OFF;
+  this->action = climate::CLIMATE_ACTION_IDLE;
+  this->target_temperature = this->target_setpoint_f_;
+  this->current_temperature = this->current_temp_f_;
 }
 
 void CosoriKettleBLE::dump_config() {
@@ -493,6 +499,76 @@ void CosoriKettleBLE::enable_ble_connection(bool enable) {
 }
 
 // ============================================================================
+// Climate Interface
+// ============================================================================
+
+climate::ClimateTraits CosoriKettleBLE::traits() {
+  auto traits = climate::ClimateTraits();
+
+  // Temperature range (Fahrenheit)
+  traits.set_supports_current_temperature(true);
+  traits.set_visual_min_temperature(104.0f);
+  traits.set_visual_max_temperature(212.0f);
+  traits.set_visual_temperature_step(1.0f);
+
+  // Supported modes
+  traits.set_supported_modes({
+    climate::CLIMATE_MODE_OFF,
+    climate::CLIMATE_MODE_HEAT,
+  });
+
+  // Supported actions
+  traits.set_supported_actions({
+    climate::CLIMATE_ACTION_OFF,
+    climate::CLIMATE_ACTION_IDLE,
+    climate::CLIMATE_ACTION_HEATING,
+  });
+
+  return traits;
+}
+
+void CosoriKettleBLE::control(const climate::ClimateCall &call) {
+  // Handle mode change
+  if (call.get_mode().has_value()) {
+    climate::ClimateMode mode = *call.get_mode();
+
+    if (mode == climate::CLIMATE_MODE_OFF) {
+      ESP_LOGI(TAG, "Climate: Setting mode to OFF");
+      this->stop_heating();
+      this->mode = climate::CLIMATE_MODE_OFF;
+    } else if (mode == climate::CLIMATE_MODE_HEAT) {
+      ESP_LOGI(TAG, "Climate: Setting mode to HEAT");
+      this->mode = climate::CLIMATE_MODE_HEAT;
+      // Start heating if we have a target temperature
+      if (this->target_temperature > 0) {
+        this->start_heating();
+      }
+    }
+  }
+
+  // Handle target temperature change
+  if (call.get_target_temperature().has_value()) {
+    float temp = *call.get_target_temperature();
+    ESP_LOGI(TAG, "Climate: Setting target temperature to %.0f°F", temp);
+    this->target_temperature = temp;
+    this->target_setpoint_f_ = temp;
+
+    // Update number entity if it exists
+    if (this->target_setpoint_number_ != nullptr) {
+      this->target_setpoint_number_->publish_state(temp);
+    }
+
+    // If in heat mode, apply the new temperature
+    if (this->mode == climate::CLIMATE_MODE_HEAT) {
+      this->start_heating();
+    }
+  }
+
+  // Publish updated state
+  this->publish_state();
+}
+
+// ============================================================================
 // State Management
 // ============================================================================
 
@@ -534,6 +610,34 @@ void CosoriKettleBLE::update_entities_() {
   if (this->heating_switch_ != nullptr) {
     this->heating_switch_->publish_state(this->heating_);
   }
+
+  // Update climate state
+  this->update_climate_state_();
+}
+
+void CosoriKettleBLE::update_climate_state_() {
+  // Update current temperature
+  this->current_temperature = this->current_temp_f_;
+
+  // Initialize target temperature from kettle on first status
+  if (!this->target_setpoint_initialized_) {
+    this->target_temperature = this->kettle_setpoint_f_;
+    this->target_setpoint_f_ = this->kettle_setpoint_f_;
+    this->target_setpoint_initialized_ = true;
+    ESP_LOGI(TAG, "Climate: Initialized target temperature to %.0f°F from kettle", this->target_temperature);
+  }
+
+  // Update mode based on heating state
+  if (this->heating_) {
+    this->mode = climate::CLIMATE_MODE_HEAT;
+    this->action = climate::CLIMATE_ACTION_HEATING;
+  } else {
+    // Keep mode but set action to idle
+    this->action = climate::CLIMATE_ACTION_IDLE;
+  }
+
+  // Publish climate state
+  this->publish_state();
 }
 
 void CosoriKettleBLE::track_online_status_() {

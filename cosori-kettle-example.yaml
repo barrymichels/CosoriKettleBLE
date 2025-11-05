@@ -75,6 +75,24 @@ cosori_kettle_ble:
   update_interval: 1s
 
 # ============================================================================
+# Climate Entity (Thermostat Card Support)
+# ============================================================================
+# The kettle automatically appears as a climate entity!
+# You can use Home Assistant's native thermostat card:
+#
+# type: thermostat
+# entity: climate.cosori_kettle_temperature_control
+#
+# This provides:
+# - Semi-circle temperature slider (104-212°F)
+# - Current temperature display
+# - Mode control (OFF / HEAT)
+# - Action indicator (IDLE / HEATING)
+#
+# The climate entity is created automatically - no additional configuration needed!
+# It works alongside the individual entities below for maximum flexibility.
+
+# ============================================================================
 # Sensors (read-only status information)
 # ============================================================================
 sensor:
@@ -164,9 +182,20 @@ switch:
       # (Kettle only allows one BLE connection at a time)
 
 # ============================================================================
-# Home Assistant Dashboard Example
+# Home Assistant Dashboard Examples
 # ============================================================================
-# Add this to your Lovelace dashboard:
+# Option 1: Thermostat Card (Recommended - Beautiful semi-circle slider!)
+#
+# type: thermostat
+# entity: climate.cosori_kettle_temperature_control
+#
+# This gives you:
+# - Beautiful semi-circle temperature slider
+# - Current temperature display
+# - OFF/HEAT mode toggle
+# - IDLE/HEATING action indicator
+#
+# Option 2: Individual Entities Card
 #
 # type: entities
 # title: Cosori Kettle

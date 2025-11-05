@@ -103,6 +103,37 @@ switch:
 
 **That's it!** Just find your kettle's MAC address (see below) and you're ready to go.
 
+## Climate Entity & Thermostat Card
+
+The kettle automatically appears as a **climate entity** in Home Assistant, which means you can use the beautiful native **thermostat card** with its semi-circle temperature slider!
+
+### Using the Thermostat Card
+
+Add this to your Lovelace dashboard:
+
+```yaml
+type: thermostat
+entity: climate.cosori_kettle
+```
+
+The thermostat card provides:
+- **Semi-circle temperature slider** (104-212°F)
+- **Current temperature** display
+- **Mode control** (OFF / HEAT)
+- **Action indicator** (IDLE / HEATING)
+
+### How It Works
+
+- **OFF mode**: Kettle is idle, not heating
+- **HEAT mode**: Kettle will heat to target temperature
+- **Temperature slider**: Adjust target temperature (104-212°F)
+- **Current temperature**: Shows actual water temperature
+- **Action**: Shows HEATING when actively warming, IDLE otherwise
+
+### Alternative: Individual Entities
+
+You can also use the individual entities (sensors, switches, numbers) for more granular control or custom card designs. Both approaches work simultaneously!
+
 ## Finding Your Kettle's MAC Address
 
 ### Method 1: Using `bluetoothctl` (Linux)

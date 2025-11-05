@@ -1,18 +1,18 @@
 """ESPHome component for Cosori Kettle BLE."""
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import ble_client
+from esphome.components import ble_client, climate
 from esphome.const import CONF_ID
 
 CODEOWNERS = ["@barrymichels"]
 DEPENDENCIES = ["ble_client"]
-AUTO_LOAD = ["sensor", "binary_sensor", "number", "switch"]
+AUTO_LOAD = ["sensor", "binary_sensor", "number", "switch", "climate"]
 
 CONF_COSORI_KETTLE_BLE_ID = "cosori_kettle_ble_id"
 
 cosori_kettle_ble_ns = cg.esphome_ns.namespace("cosori_kettle_ble")
 CosoriKettleBLE = cosori_kettle_ble_ns.class_(
-    "CosoriKettleBLE", ble_client.BLEClientNode, cg.PollingComponent
+    "CosoriKettleBLE", ble_client.BLEClientNode, cg.PollingComponent, climate.Climate
 )
 
 COSORI_KETTLE_BLE_COMPONENT_SCHEMA = cv.Schema(

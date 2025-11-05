@@ -6,6 +6,7 @@
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/number/number.h"
 #include "esphome/components/switch/switch.h"
+#include "esphome/components/climate/climate.h"
 
 #ifdef USE_ESP32
 
@@ -14,7 +15,7 @@
 namespace esphome {
 namespace cosori_kettle_ble {
 
-class CosoriKettleBLE : public esphome::ble_client::BLEClientNode, public PollingComponent {
+class CosoriKettleBLE : public esphome::ble_client::BLEClientNode, public PollingComponent, public climate::Climate {
  public:
   void setup() override;
   void dump_config() override;
@@ -47,6 +48,10 @@ class CosoriKettleBLE : public esphome::ble_client::BLEClientNode, public Pollin
   // Connection state queries
   bool is_connected() const { return this->node_state == esp32_ble_tracker::ClientState::ESTABLISHED; }
   bool is_ble_enabled() const { return ble_enabled_; }
+
+  // Climate interface
+  climate::ClimateTraits traits() override;
+  void control(const climate::ClimateCall &call) override;
 
  protected:
   // BLE characteristics
@@ -110,6 +115,7 @@ class CosoriKettleBLE : public esphome::ble_client::BLEClientNode, public Pollin
   // State management
   uint8_t next_tx_seq_();
   void update_entities_();
+  void update_climate_state_();
   void track_online_status_();
   void reset_online_status_();
 };
