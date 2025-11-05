@@ -518,11 +518,7 @@ climate::ClimateTraits CosoriKettleBLE::traits() {
   });
 
   // Supported actions
-  traits.set_supported_actions({
-    climate::CLIMATE_ACTION_OFF,
-    climate::CLIMATE_ACTION_IDLE,
-    climate::CLIMATE_ACTION_HEATING,
-  });
+  traits.set_supports_action(true);
 
   return traits;
 }
