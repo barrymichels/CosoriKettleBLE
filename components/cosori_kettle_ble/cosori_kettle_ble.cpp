@@ -30,6 +30,11 @@ void CosoriKettleBLE::setup() {
   this->status_received_ = false;
   this->registration_sent_ = false;
   this->no_response_count_ = 0;
+
+  // Initialize BLE connection switch to ON (enabled by default)
+  if (this->ble_connection_switch_ != nullptr) {
+    this->ble_connection_switch_->publish_state(true);
+  }
 }
 
 void CosoriKettleBLE::dump_config() {
@@ -62,6 +67,7 @@ void CosoriKettleBLE::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
       this->registration_sent_ = false;
       this->status_received_ = false;
       this->no_response_count_ = 0;
+      this->target_setpoint_initialized_ = false;
       break;
 
     case ESP_GATTC_SEARCH_CMPL_EVT: {
@@ -479,6 +485,11 @@ void CosoriKettleBLE::enable_ble_connection(bool enable) {
     // Reconnect
     this->parent_->set_enabled(true);
   }
+
+  // Update switch state to reflect actual setting
+  if (this->ble_connection_switch_ != nullptr) {
+    this->ble_connection_switch_->publish_state(enable);
+  }
 }
 
 // ============================================================================
@@ -501,6 +512,14 @@ void CosoriKettleBLE::update_entities_() {
 
   if (this->kettle_setpoint_sensor_ != nullptr) {
     this->kettle_setpoint_sensor_->publish_state(this->kettle_setpoint_f_);
+  }
+
+  // Initialize target setpoint number with kettle's setpoint on first status
+  if (this->target_setpoint_number_ != nullptr && !this->target_setpoint_initialized_) {
+    this->target_setpoint_f_ = this->kettle_setpoint_f_;
+    this->target_setpoint_number_->publish_state(this->target_setpoint_f_);
+    this->target_setpoint_initialized_ = true;
+    ESP_LOGI(TAG, "Initialized target setpoint to %d°F from kettle", (int)this->target_setpoint_f_);
   }
 
   if (this->on_base_binary_sensor_ != nullptr) {

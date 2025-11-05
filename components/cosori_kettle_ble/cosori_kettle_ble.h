@@ -73,6 +73,7 @@ class CosoriKettleBLE : public esphome::ble_client::BLEClientNode, public Pollin
   uint8_t no_response_count_{0};
   uint32_t last_poll_time_{0};
   bool registration_sent_{false};
+  bool target_setpoint_initialized_{false};
 
   // Entity pointers
   sensor::Sensor *temperature_sensor_{nullptr};
