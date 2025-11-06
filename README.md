@@ -1,6 +1,7 @@
 # ESPHome Cosori Kettle BLE Component
 
 Control your Cosori smart kettle from Home Assistant using an ESP32 and BLE.
+Amazon Link: https://www.amazon.com/COSORI-Electric-Gooseneck-Variable-Stainless/dp/B07T1CH2HH
 
 ## Features
 
