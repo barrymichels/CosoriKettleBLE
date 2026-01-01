@@ -1,0 +1,86 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/components/**",
+                "${workspaceFolder}/.esphome/build/**/.pioenvs/*/include",
+                "${workspaceFolder}/.esphome/build/**/.piolibdeps/*/include",
+                "~/.platformio/packages/framework-espidf/components/**",
+                "~/.platformio/packages/toolchain-xtensa-esp-elf/xtensa-esp-elf/include/**",
+                "~/.platformio/packages/toolchain-xtensa-esp-elf/lib/gcc/xtensa-esp-elf/**",
+                "~/.platformio/packages/toolchain-xtensa-esp-elf/picolibc/include",
+                "~/.platformio/packages/toolchain-xtensa-esp-elf/xtensa-esp-elf/include"
+            ],
+            "defines": [
+              "_POSIX_READER_WRITER_LOCKS",
+              "_GNU_SOURCE",
+              "_GLIBCXX_USE_POSIX_SEMAPHORE",
+              "_GLIBCXX_HAVE_POSIX_SEMAPHORE",
+              "SOC_XTAL_FREQ_MHZ=CONFIG_XTAL_FREQ",
+              "SOC_MMU_PAGE_SIZE=CONFIG_MMU_PAGE_SIZE",
+              "IDF_VER=\"5.5.1\"",
+              "ESP_PLATFORM",
+              "PLATFORMIO=60118",
+              "ARDUINO_ESP32_DEV",
+              "ESPHOME_LOG_LEVEL=ESPHOME_LOG_LEVEL_INFO",
+              "USE_ESP32",
+              "USE_ESP32_FRAMEWORK_ESP_IDF",
+              "USE_ESP32_VARIANT_ESP32",
+              "USE_ESP_IDF"
+            ],
+            "compilerPath": "~/.platformio/packages/toolchain-xtensa-esp-elf/bin/xtensa-esp32-elf-g++",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x64",
+            "compilerArgs": [
+              "-Wno-volatile",
+              "-std=gnu++20",
+              "-Os",
+              "-Wno-enum-conversion",
+              "-Wno-error=deprecated-declarations",
+              "-Wno-error=extra",
+              "-Wno-error=unused-but-set-variable",
+              "-Wno-error=unused-function",
+              "-Wno-error=unused-variable",
+              "-Wno-frame-address",
+              "-Wno-sign-compare",
+              "-Wno-unused-parameter",
+              "-fdata-sections",
+              "-fdiagnostics-color=always",
+              "-ffunction-sections",
+              "-fmacro-prefix-map=~/.platformio/packages/framework-espidf=/IDF",
+              "-fmacro-prefix-map=${workspaceFolder}/.esphome/build/cosori-kettle=.",
+              "-fno-builtin-bzero",
+              "-fno-builtin-memcpy",
+              "-fno-builtin-memset",
+              "-fno-builtin-stpcpy",
+              "-fno-builtin-strncpy",
+              "-fno-exceptions",
+              "-fno-jump-tables",
+              "-fno-rtti",
+              "-fno-tree-switch-conversion",
+              "-freorder-blocks",
+              "-fstrict-volatile-bitfields",
+              "-fuse-cxa-atexit",
+              "-gdwarf-4",
+              "-ggdb",
+              "-mlongcalls",
+              "-Wno-nonnull-compare",
+              "-Wno-sign-compare",
+              "-Wno-unused-but-set-variable",
+              "-Wno-unused-variable",
+              "-fno-exceptions"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "~/.platformio/packages/framework-espidf/components"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,112 @@
+{
+    // C/C++ Extension Settings
+    "C_Cpp.intelliSenseEngine": "default",
+    "C_Cpp.errorSquiggles": "enabled",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.default.compilerPath": "~/.platformio/packages/toolchain-xtensa-esp32/bin/xtensa-esp32-elf-g++",
+    
+    // File associations
+    "files.associations": {
+      "*.h": "cpp",
+      "*.cpp": "cpp",
+      "*.tcc": "cpp",
+      "array": "cpp",
+      "string": "cpp",
+      "string_view": "cpp",
+      "vector": "cpp",
+      "functional": "cpp",
+      "memory": "cpp",
+      "optional": "cpp",
+      "algorithm": "cpp",
+      "cmath": "cpp",
+      "cstdint": "cpp",
+      "cstddef": "cpp",
+      "cstdio": "cpp",
+      "cstdlib": "cpp",
+      "cstring": "cpp",
+      "cctype": "cpp",
+      "chrono": "cpp",
+      "limits": "cpp",
+      "type_traits": "cpp",
+      "utility": "cpp",
+      "initializer_list": "cpp",
+      "iosfwd": "cpp",
+      "new": "cpp",
+      "stdexcept": "cpp",
+      "system_error": "cpp",
+      "typeinfo": "cpp",
+      "iostream": "cpp",
+      "atomic": "cpp",
+      "bit": "cpp",
+      "bitset": "cpp",
+      "charconv": "cpp",
+      "cinttypes": "cpp",
+      "clocale": "cpp",
+      "compare": "cpp",
+      "complex": "cpp",
+      "concepts": "cpp",
+      "condition_variable": "cpp",
+      "cstdarg": "cpp",
+      "ctime": "cpp",
+      "cwchar": "cpp",
+      "cwctype": "cpp",
+      "deque": "cpp",
+      "list": "cpp",
+      "map": "cpp",
+      "set": "cpp",
+      "unordered_map": "cpp",
+      "exception": "cpp",
+      "iterator": "cpp",
+      "memory_resource": "cpp",
+      "netfwd": "cpp",
+      "numeric": "cpp",
+      "random": "cpp",
+      "ratio": "cpp",
+      "regex": "cpp",
+      "tuple": "cpp",
+      "format": "cpp",
+      "fstream": "cpp",
+      "future": "cpp",
+      "iomanip": "cpp",
+      "istream": "cpp",
+      "mutex": "cpp",
+      "numbers": "cpp",
+      "ostream": "cpp",
+      "semaphore": "cpp",
+      "span": "cpp",
+      "sstream": "cpp",
+      "stop_token": "cpp",
+      "streambuf": "cpp",
+      "text_encoding": "cpp",
+      "thread": "cpp",
+      "variant": "cpp"
+    },
+    
+    // Editor settings for C++
+    "editor.formatOnSave": false,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    
+    // Files to exclude from explorer
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.DS_Store": true
+    },
+    
+    // Search settings
+    "search.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/node_modules": true,
+        "**/.esphome": true
+    },
+    
+    // ESPHome specific
+    "[yaml]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    }
+}
