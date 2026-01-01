@@ -9,7 +9,8 @@ DEPENDENCIES = ["ble_client"]
 AUTO_LOAD = ["sensor", "binary_sensor", "number", "switch", "climate"]
 
 CONF_COSORI_KETTLE_BLE_ID = "cosori_kettle_ble_id"
-CONF_HANDSHAKE = "handshake"
+CONF_REGISTRATION_KEY = "registration_key"
+CONF_PROTOCOL_VERSION = "protocol_version"
 
 cosori_kettle_ble_ns = cg.esphome_ns.namespace("cosori_kettle_ble")
 CosoriKettleBLE = cosori_kettle_ble_ns.class_(
@@ -19,19 +20,22 @@ CosoriKettleBLE = cosori_kettle_ble_ns.class_(
 COSORI_KETTLE_BLE_COMPONENT_SCHEMA = cv.Schema(
     {
         cv.GenerateID(CONF_COSORI_KETTLE_BLE_ID): cv.use_id(CosoriKettleBLE),
+        cv.Optional(cv.CONF_DEVICE_ID): cv.sub_device_id,
     }
 )
 
 
-def validate_hex_string(value):
-    """Validate that a string contains valid hex bytes."""
+def validate_registration_key(value):
+    """Validate that registration key is a 32-character hex string (16 bytes)."""
     value = cv.string(value)
     # Remove any spaces, colons, or 0x prefixes
     cleaned = value.replace(" ", "").replace(":", "").replace("0x", "").lower()
-    if len(cleaned) % 2 != 0:
-        raise cv.Invalid("Hex string must have even number of characters")
+    if len(cleaned) != 32:
+        raise cv.Invalid(f"Registration key must be exactly 32 hex characters (16 bytes), got {len(cleaned)} characters")
     try:
-        bytes.fromhex(cleaned)
+        key_bytes = bytes.fromhex(cleaned)
+        if len(key_bytes) != 16:
+            raise cv.Invalid(f"Registration key must be 16 bytes, got {len(key_bytes)} bytes")
     except ValueError as e:
         raise cv.Invalid(f"Invalid hex string: {e}")
     return cleaned
@@ -41,13 +45,11 @@ CONFIG_SCHEMA = (
     climate._CLIMATE_SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(CosoriKettleBLE),
-            cv.Optional(CONF_HANDSHAKE): cv.All(
-                cv.ensure_list(validate_hex_string),
-                cv.Length(min=3, max=3, msg="handshake must have exactly 3 packets"),
-            ),
+            cv.Required(CONF_REGISTRATION_KEY): validate_registration_key,
+            cv.Optional(CONF_PROTOCOL_VERSION, default=0): cv.one_of(0, 1, int=True),
         }
     )
-    .extend(cv.polling_component_schema("1s"))
+    .extend(cv.polling_component_schema("10s"))
     .extend(ble_client.BLE_CLIENT_SCHEMA)
 )
 
@@ -59,8 +61,18 @@ async def to_code(config):
     await ble_client.register_ble_node(var, config)
     await climate.register_climate(var, config)
 
-    if CONF_HANDSHAKE in config:
-        for i, hex_str in enumerate(config[CONF_HANDSHAKE]):
-            # Convert hex string to list of bytes
-            byte_list = [int(hex_str[j:j+2], 16) for j in range(0, len(hex_str), 2)]
-            cg.add(var.set_handshake_packet(i, byte_list))
+    # Convert hex string to array of 16 bytes
+    hex_str = config[CONF_REGISTRATION_KEY]
+    key_bytes = bytes.fromhex(hex_str)
+    if len(key_bytes) != 16:
+        raise cv.Invalid(f"Registration key must be 16 bytes, got {len(key_bytes)} bytes")
+    
+    # Create array<uint8_t, 16> in C++ with double-brace initialization
+    # Format: std::array<uint8_t, 16>{{1,2,3,...}}
+    byte_list = ','.join(str(b) for b in key_bytes)
+    key_array = cg.RawExpression(f"std::array<uint8_t, 16>{{{{{byte_list}}}}}")
+    cg.add(var.set_registration_key(key_array))
+    
+    # Set protocol version
+    protocol_version = config.get(CONF_PROTOCOL_VERSION, 0)
+    cg.add(var.set_protocol_version(protocol_version))

@@ -1,0 +1,81 @@
+---
+# ESPHome configuration used for testing the Cosori Kettle BLE component
+
+esphome:
+  name: cosori-kettle
+  devices:
+    - id: kettle
+      name: "Cosori Kettle"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+  level: DEBUG
+
+ble_client:
+  - mac_address: "C4:A9:B8:73:AB:29"
+    id: cosori_kettle_client
+    auto_connect: true
+
+external_components:
+  - source: ./components
+    components: [cosori_kettle_ble]
+    refresh: 0s
+
+cosori_kettle_ble:
+  ble_client_id: cosori_kettle_client
+  id: my_cosori_kettle
+  registration_key: '9903e01a3c3baa8f6c71cbb5167e7d5f'
+  protocol_version: 1
+  device_id: kettle
+
+sensor:
+  - platform: cosori_kettle_ble
+    cosori_kettle_ble_id: my_cosori_kettle
+    temperature:
+      name: "Temperature"
+    kettle_setpoint:
+      name: "Kettle Setpoint"
+
+# ============================================================================
+# Binary Sensors (on/off status indicators)
+# ============================================================================
+binary_sensor:
+  - platform: cosori_kettle_ble
+    cosori_kettle_ble_id: my_cosori_kettle
+    on_base:
+      name: "On Base"
+    heating:
+      name: "Heating"
+
+# ============================================================================
+# Number Input (target temperature control)
+# ============================================================================
+number:
+  - platform: cosori_kettle_ble
+    cosori_kettle_ble_id: my_cosori_kettle
+    target_setpoint:
+      name: "Target Setpoint"
+    hold_time:
+      name: "Hold Time"
+    my_temp:
+      name: "My Temperature"
+
+# ============================================================================
+# Switches (control actions)
+# ============================================================================
+switch:
+  - platform: cosori_kettle_ble
+    cosori_kettle_ble_id: my_cosori_kettle
+
+    heating_switch:
+      name: "Heating"
+    ble_connection_switch:
+      name: "BLE Connection"
+    baby_formula_switch:
+      name: "Baby Formula Mode"
+    register_switch:
+      name: "Register with Kettle"

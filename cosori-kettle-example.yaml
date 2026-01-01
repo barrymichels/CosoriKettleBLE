@@ -20,8 +20,11 @@ substitutions:
 
 esphome:
   name: ${device_name}
-  platform: ESP32
+
+esp32:
   board: esp32dev
+  framework:
+    type: esp-idf
 
 # Enable logging (optional: set to WARN or ERROR in production)
 logger:
@@ -44,17 +47,6 @@ wifi:
     ssid: "${friendly_name} Fallback"
     password: !secret fallback_password
 
-# Enable web server (optional, useful for debugging)
-web_server:
-  port: 80
-
-# Configure ESP32 Bluetooth LE tracker
-esp32_ble_tracker:
-  scan_parameters:
-    interval: 1100ms
-    window: 1100ms
-    active: false
-
 # BLE Client for the kettle
 ble_client:
   - mac_address: ${kettle_mac_address}
@@ -73,7 +65,9 @@ cosori_kettle_ble:
   ble_client_id: cosori_kettle_client
   id: my_cosori_kettle
   name: "${friendly_name} Temperature Control"  # Sets the climate entity name
-  update_interval: 1s
+  update_interval: 10s
+  protocol_version: 1 # 0 or 1 - depends on kettle
+  registration_key: '9802e91afc3bca8f9c71cba5127e7d5f' # random 16-byte key OR key pulled from your device
 
 # ============================================================================
 # Climate Entity (Thermostat Card Support)
@@ -104,9 +98,6 @@ sensor:
     temperature:
       name: "${friendly_name} Temperature"
       id: kettle_temp
-      unit_of_measurement: "°F"
-      accuracy_decimals: 0
-      device_class: temperature
       filters:
         # Optional: Convert to Celsius
         # - lambda: return (x - 32) * 5.0 / 9.0;
@@ -119,9 +110,6 @@ sensor:
     kettle_setpoint:
       name: "${friendly_name} Kettle Setpoint"
       id: kettle_sp
-      unit_of_measurement: "°F"
-      accuracy_decimals: 0
-      device_class: temperature
 
 # ============================================================================
 # Binary Sensors (on/off status indicators)
@@ -133,12 +121,10 @@ binary_sensor:
     # Is the kettle on its base?
     on_base:
       name: "${friendly_name} On Base"
-      device_class: connectivity
 
     # Is the kettle actively heating?
     heating:
       name: "${friendly_name} Heating"
-      device_class: heat
 
 # ============================================================================
 # Number Input (target temperature control)
@@ -151,12 +137,11 @@ number:
     target_setpoint:
       name: "${friendly_name} Target Temperature"
       id: target_temp
-      min_value: 104
-      max_value: 212
-      step: 1
-      unit_of_measurement: "°F"
       mode: box  # or "slider"
-      icon: "mdi:thermometer"
+    hold_time:
+      name: "Hold Time"
+    my_temp:
+      name: "My Temperature"
 
 # ============================================================================
 # Switches (control actions)
@@ -177,10 +162,22 @@ switch:
     ble_connection_switch:
       name: "${friendly_name} BLE Connection"
       id: ble_control
-      icon: "mdi:bluetooth"
       restore_mode: RESTORE_DEFAULT_ON
       # Turn OFF to disconnect and allow official mobile app to connect
       # (Kettle only allows one BLE connection at a time)
+
+    baby_formula_switch:
+      name: "Baby Formula Mode"
+
+    # Register/pair with kettle (requires device to be in pairing mode)
+    register_switch:
+      name: "${friendly_name} Register"
+      id: register_sw
+      icon: "mdi:key-plus"
+      # Enable to send registration command (0x80) to pair with kettle
+      # Device must be in pairing mode for this to work
+      # After successful registration, switch automatically turns off
+      # Disable to send hello command (0x81) for reconnection
 
 # ============================================================================
 # Home Assistant Dashboard Examples
@@ -207,6 +204,7 @@ switch:
 #   - entity: number.cosori_kettle_target_temperature
 #   - entity: switch.cosori_kettle_heating
 #   - entity: switch.cosori_kettle_ble_connection
+#   - entity: switch.cosori_kettle_register
 
 # ============================================================================
 # Home Assistant Automations Example

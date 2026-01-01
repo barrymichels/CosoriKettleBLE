@@ -1,0 +1,50 @@
+# Python
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# ESPHome
+.esphome/
+*.bin
+*.elf
+*.map
+/test_cpp
+tests/test_cpp
+tests/test_state
+*.o
+*.d
+
+# VS Code
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json.bak
+.vscode/ipch/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk

@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  cpp-tests:
+    name: C++ Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++ make
+
+    - name: Build C++ tests
+      run: make
+
+    - name: Run C++ tests
+      run: make test
+
+  esphome-build:
+    name: ESPHome Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Cache PlatformIO
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.platformio
+          .esphome
+        key: ${{ runner.os }}-platformio-${{ hashFiles('**/cosori-kettle.build.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-platformio-
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Validate ESPHome config
+      run: uv run esphome config cosori-kettle.build.yaml
+
+    - name: Compile ESPHome firmware
+      run: uv run esphome compile cosori-kettle.build.yaml
