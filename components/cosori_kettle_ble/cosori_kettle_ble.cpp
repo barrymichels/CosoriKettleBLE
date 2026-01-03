@@ -567,8 +567,7 @@ climate::ClimateTraits CosoriKettleBLE::traits() {
   });
 
   // Supported features
-  traits.add_supported_feature(climate::ClimateFeature::CLIMATE_FEATURE_CURRENT_TEMPERATURE);
-  traits.add_supported_feature(climate::ClimateFeature::CLIMATE_FEATURE_ACTION);
+  traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE | climate::CLIMATE_SUPPORTS_ACTION);
 
   return traits;
 }
