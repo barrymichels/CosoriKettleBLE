@@ -45,7 +45,7 @@ void CosoriKettleBLE::setup() {
 
 void CosoriKettleBLE::dump_config() {
   ESP_LOGCONFIG(TAG, "Cosori Kettle BLE:");
-  ESP_LOGCONFIG(TAG, "  MAC Address: %s", this->parent_->address_str().c_str());
+  ESP_LOGCONFIG(TAG, "  MAC Address: %s", this->parent_->address_str());
   ESP_LOGCONFIG(TAG, "  Update Interval: %ums", this->get_update_interval());
   LOG_BINARY_SENSOR("  ", "On Base", this->on_base_binary_sensor_);
   LOG_BINARY_SENSOR("  ", "Heating", this->heating_binary_sensor_);
@@ -556,7 +556,6 @@ climate::ClimateTraits CosoriKettleBLE::traits() {
 
   // Temperature range in Celsius (ESPHome expects Celsius)
   // 104°F = 40°C, 212°F = 100°C
-  traits.set_supports_current_temperature(true);
   traits.set_visual_min_temperature(40.0f);
   traits.set_visual_max_temperature(100.0f);
   traits.set_visual_temperature_step(0.5f);
@@ -567,8 +566,8 @@ climate::ClimateTraits CosoriKettleBLE::traits() {
     climate::CLIMATE_MODE_HEAT,
   });
 
-  // Supported actions
-  traits.set_supports_action(true);
+  // Supported features
+  traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE | climate::CLIMATE_SUPPORTS_ACTION);
 
   return traits;
 }
