@@ -397,17 +397,18 @@ If your kettle connects but immediately disconnects after the registration hands
 [WARN] BLE disconnected
 ```
 
-**Solution:** Capture your kettle's handshake from the official VeSync app and configure it in ESPHome:
+**Solution:** Capture your kettle's handshake from the official Cosori/VeSync app and configure it in ESPHome.
 
-1. **Capture the handshake** (Android):
-   - Enable Developer Options → Bluetooth HCI snoop log
-   - Toggle Bluetooth OFF then ON
-   - Connect to kettle using VeSync app
-   - Pull the log: `adb pull /data/misc/bluetooth/logs/btsnoop_hci.log`
-   - Open in Wireshark, filter: `btatt.opcode == 0x52`
-   - Find 3 writes to FFF2 characteristic right after connection
+📖 **See the [Handshake Extraction Guide](HANDSHAKE_EXTRACTION_GUIDE.md)** for detailed step-by-step instructions including:
+- Setting up packet capture tools (PacketLogger for iOS/Mac, HCI snoop for Android)
+- Identifying handshake packets vs status updates
+- Extracting and formatting the handshake data
+- Troubleshooting common issues
 
-2. **Configure custom handshake** in your ESPHome YAML:
+**Quick summary:**
+1. Capture BLE traffic while connecting with the official app
+2. Extract the first 2-3 write packets to the kettle (handle 0x000E)
+3. Configure in your ESPHome YAML:
    ```yaml
    cosori_kettle_ble:
      ble_client_id: cosori_kettle_client
@@ -415,12 +416,12 @@ If your kettle connects but immediately disconnects after the registration hands
      name: "Kettle"
      # Custom handshake for different kettle firmware
      handshake:
-       - "a5220024008a0081d1003634..."  # Packet 1 (hex, from capture)
-       - "373436613037333131..."        # Packet 2 (hex, from capture)
-       - "6262"                          # Packet 3 (hex, from capture)
+       - "A5 22 04 24 00 2E 01 81 D1 00 37 66 38 36 38 39 36 32 63 64"
+       - "65 30 35 36 62 36 30 62 35 34 30 33 34 33 33 61 64 34 32 62"
+       - "64 63"
    ```
 
-The handshake packets can be specified with or without colons/spaces (e.g., `"a5:22:00"` or `"a52200"` both work).
+The handshake packets can be specified with or without colons/spaces (e.g., `"A5 22 04"` or `"A52204"` both work).
 
 ### Temperature Doesn't Reach Exact Setpoint
 
