@@ -4,9 +4,22 @@ This document describes the custom Bluetooth Low Energy protocol used by the Cos
 
 ## Overview
 
-The Cosori kettle uses a proprietary BLE protocol for bidirectional communication. The protocol supports:
+The Cosori kettle uses a proprietary BLE protocol for bidirectional communication. The protocol has evolved through two versions:
+
+### V0 Protocol (Legacy)
+- Basic temperature control using setpoint commands
+- Requires hello5 handshake before setpoint
+- Limited to boil and heat modes
+
+### V1 Protocol (Current)
+- Advanced features: delayed start, hold/keep-warm timers, custom temperature
+- Registration/pairing support
+- Baby formula mode
+- Completion notifications
+- No hello5 required
+
+Both protocols support:
 - Reading kettle status (temperature, heating state, on-base detection)
-- Setting target temperature
 - Starting and stopping heating
 - Real-time status updates via BLE notifications
 
@@ -20,6 +33,57 @@ The kettle exposes two primary GATT characteristics:
 | **RX** | `0xFFF1` | Notify | Receive status updates from kettle |
 
 **Service UUID:** `0xFFF0`
+
+### Flow Control & BLE Communication
+
+**20-Byte Chunking for TX (Controller → Kettle):**
+- BLE characteristic writes are limited to 20 bytes per write
+- Packets larger than 20 bytes MUST be split into 20-byte chunks when sending
+- Example: 35-byte status ACK packet = 20 bytes + 15 bytes (if sending to kettle)
+- Chunks are sent sequentially without additional framing
+
+**Packet Sizes:**
+- Envelope: 6 bytes (fixed)
+- Status request: 10 bytes total (6 envelope + 4 payload) - single write
+- Compact status: 18 bytes total (6 + 12) - single write  
+- Status ACK: 35 bytes total (6 + 29) - requires 2 writes if sending
+- V1 commands: varies (9-15 bytes typically) - single write
+
+**RX (Kettle → Controller) - Single Complete Messages:**
+- Kettle sends complete messages as single notifications
+- No multi-chunk reassembly needed for RX
+- Status ACK (35 bytes) arrives as a single notification
+- Parser receives complete packets, no buffering required
+
+**Request/Response Pattern:**
+1. Controller writes command to TX characteristic (0xFFF2)
+   - Split into 20-byte chunks if needed
+2. Kettle sends response via RX notification characteristic (0xFFF1)
+   - Always complete messages (no chunking)
+3. Response types:
+   - Command ACK (frame type 0x12, 4-5 bytes payload)
+   - Status ACK (frame type 0x12, 29 bytes payload) - response to status request
+   - Compact status (frame type 0x22, 12 bytes payload) - unsolicited updates
+   - Completion notification (frame type 0x22, 5 bytes payload)
+
+**Example Flow - Set Custom Temperature:**
+```
+Controller → TX: Set mytemp to 179°F (A522 1C05 00CD 01F3 A300 B3)
+Kettle → RX: Command ACK (A512 1C04 0091 01F3 A300) [single notification]
+Kettle → RX: Compact status showing new setpoint [single notification]
+```
+
+**Example Flow - Status Request:**
+```
+Controller → TX: Status request (A522 4104 0072 0140 4000) [single write]
+Kettle → RX: Status ACK (35 bytes) [single notification - complete packet]
+```
+
+**Implementation Notes:**
+- **TX (sending):** Split packets >20 bytes into 20-byte chunks
+- **RX (receiving):** Process complete packets as received
+- Validate magic byte (0xA5) at start of each packet
+- Validate checksum before processing
 
 ## Packet Structure
 
@@ -42,10 +106,31 @@ All packets follow this format:
 
 ### Checksum Calculation
 
-The checksum is calculated as:
+<!-- TODO: is this accurate for v0 packets? -->
+The v0 checksum is calculated as:
 ```
 checksum = (magic + type + seq + len_lo + len_hi) & 0xFF
 ```
+
+The v1 checksum is calculated by setting the checksum byte to 0x01, set `checksum = 0` then for each byte, `checksum = (checksum - byte) & 0xFF`
+
+## Protocol Versions
+
+### Detecting Protocol Version
+
+The protocol version can be detected from the device's hardware and software version strings:
+- **V0**: Older firmware versions
+- **V1**: Hardware 1.0.00, Software R0007V0012 and newer
+
+### Command Headers
+
+All commands use a 4-byte header:
+```
+[version] [command_id] [direction] [padding]
+```
+
+- **V0 commands**: Start with `0x00` (e.g., `00F0A300`, `00F2A300`, `00F4A300`)
+- **V1 commands**: Start with `0x01` (e.g., `01F0A300`, `01F1A300`, `0181D100`)
 
 ## Packet Types
 
@@ -82,32 +167,34 @@ A5 22 [seq] [len_lo] [len_hi] [checksum] [payload: 12 bytes]
 a5:22:5e:04:00:2f:01:41:40:00:00:00:d4:64:8c:00:00:00
 ```
 
-#### 2. Extended Status (`0x12`)
+#### 2. Status ACK (`0x12`)
 
-**Total Length:** 35 bytes (6 header + 29 payload)
+**Important:** This is an ACK frame (type 0x12) with status payload. It's sent in response to status requests.
+
+**Total Length:** 35 bytes (6 header + 29 payload) - FIXED LENGTH
 
 **Format:**
 ```
 A5 12 [seq] [len_lo] [len_hi] [checksum] [payload: 29 bytes]
 ```
 
-**Payload Structure:**
+**Payload Structure (29 bytes fixed):**
 
-| Offset | Byte # | Field | Description | Values |
-|---|---|---|---|---|
-| 0 | 6 | Header1 | Always `0x01` | - |
-| 1 | 7 | Header2 | Always `0x40` | - |
-| 2 | 8 | Reserved | Unknown | `0x40` |
-| 3 | 9 | Reserved | Unknown | `0x00` |
-| 4 | 10 | Stage | Heating stage | `0x01`=heating, `0x00`=not heating |
-| 5 | 11 | Mode | Operating mode | `0x00`=normal, `0x04`=keep warm |
-| 6 | 12 | Setpoint | Target temperature (°F) | 104-212 |
-| 7 | 13 | Temperature | Current water temperature (°F) | 40-230 |
-| 8-13 | 14-19 | Unknown | Additional data | - |
-| **14** | **20** | **On-Base** | **Kettle placement status** | **`0x00`=on-base, `0x01`=off-base** |
-| 15-28 | 21-34 | Unknown | Additional data | - |
+| Offset | Field | Description | Values |
+|---|---|---|---|
+| 0-3 | Command | Always `01404000` | - |
+| 4 | Stage | Heating stage | See HeatingStage enum |
+| 5 | Mode | Operating mode | See OperatingMode enum |
+| 6 | Setpoint | Target temperature (°F) | 104-212 |
+| 7 | Temperature | Current water temperature (°F) | 40-230 |
+| 8 | MyTemp | Custom temperature setting | 104-212 |
+| 9-13 | Padding | Unknown/reserved | - |
+| **14** | **On-Base** | **Kettle placement** | **`0x00`=on-base, `0x01`=off-base** |
+| 15-16 | Hold Time | Remaining hold time (seconds, big-endian) | 0-65535 |
+| 17-27 | Padding | Unknown/reserved | - |
+| 28 | Baby Mode | Baby formula mode | `0x01`=enabled, `0x00`=disabled |
 
-**Important:** The on-base detection byte is at **byte 20** of the full packet (payload[14] in code after stripping header).
+**Important:** The on-base detection byte is at **offset 14** of the payload.
 
 **Example (on-base, not heating):**
 ```
@@ -125,21 +212,21 @@ a5:12:1c:1d:00:0c:01:40:40:00:00:00:d4:5c:8c:00:00:00:00:00:01:00:00:3c:69:00:00
 
 ### Command Packets (TO Kettle)
 
-#### 1. Poll/Status Request (`0x21`)
+#### 1. Status Request (`0x22`)
 
-Request a status update from the kettle.
+Request a status update from the kettle. Device responds with Status ACK (frame type 0x12).
 
 **Format:**
 ```
-A5 21 [seq] 04 00 [checksum] 00 40 40 00
+A5 22 [seq] 04 00 [checksum] 01 40 40 00
 ```
 
 **Example:**
 ```
-a5:21:5e:04:00:2e:00:40:40:00
+A5 22 41 04 00 72 01 40 40 00
 ```
 
-This is typically sent periodically (every 1-2 seconds) to poll the kettle for status updates.
+This is typically sent periodically (every 1-2 seconds) to request status updates from the kettle.
 
 #### 2. Start Heating (`0x20`)
 
@@ -377,15 +464,125 @@ This protocol was reverse-engineered through:
 
 Special thanks to the implementation efforts that identified the correct byte positions through careful packet analysis.
 
+## V1 Protocol Commands
+
+### Registration Commands
+
+#### Register (Pairing)
+**Command:** `0180D100` + 32-byte registration key
+
+Device must be in pairing mode. Generate a 16-byte random key and encode as ASCII hex (32 bytes).
+
+**Example:**
+```
+A5 22 00 24 00 [cs] 01 80 D1 00 [32 bytes of ASCII hex key]
+```
+
+**Response:** ACK with payload `00` on success.
+
+#### Hello (Reconnect)
+**Command:** `0181D100` + 32-byte registration key
+
+Use previously registered key to reconnect.
+
+### Heating Commands
+
+#### Start Heating
+**Command:** `01F0A300` + mode (2B BE) + hold_enable (1B) + hold_time (2B BE)
+
+**Modes:**
+- `0100`: Green Tea (180°F)
+- `0200`: Oolong (195°F)
+- `0300`: Coffee (205°F)
+- `0400`: Boil (212°F)
+- `0500`: My Temp (custom)
+
+**Examples:**
+```
+Start coffee, no hold:     A5 22 xx 09 00 [cs] 01 F0 A3 00 03 00 00 00 00
+Start boil, hold 35 min:   A5 22 xx 09 00 [cs] 01 F0 A3 00 04 00 01 08 34
+```
+
+#### Delayed Start
+**Command:** `01F1A300` + delay (2B BE) + mode (2B BE) + hold_enable (1B) + hold_time (2B BE)
+
+**Example:**
+```
+Delay 1 hour, boil, no hold: A5 22 xx 0B 00 [cs] 01 F1 A3 00 0E 10 04 00 00 00 00
+```
+
+#### Stop Heating
+**Command:** `01F4A300`
+
+```
+A5 22 xx 04 00 [cs] 01 F4 A3 00
+```
+
+### Configuration Commands
+
+#### Set My Temp
+**Command:** `01F3A300` + temperature (1B)
+
+Set custom temperature for MY_TEMP mode (104-212°F).
+
+**Example:**
+```
+Set 179°F: A5 22 1C 05 00 [cs] 01 F3 A3 00 B3
+```
+
+#### Set Baby Formula Mode
+**Command:** `01F5A300` + enabled (1B)
+
+Enable special baby formula temperature mode.
+
+**Example:**
+```
+Enable:  A5 22 25 05 00 [cs] 01 F5 A3 00 01
+Disable: A5 22 1D 05 00 [cs] 01 F5 A3 00 00
+```
+
+### Completion Notifications
+
+**Command:** `01F7A300` + status (1B)
+
+Sent by device when heating completes.
+
+**Status values:**
+- `0x20`: Heating complete (may enter hold mode)
+- `0x21`: Hold timer complete
+
+**Examples:**
+```
+Done:          A5 22 98 05 00 [cs] 01 F7 A3 00 20
+Hold complete: A5 22 E1 05 00 [cs] 01 F7 A3 00 21
+```
+
+## Extended Status Fields
+
+Extended status packets (frame type `0x12`) contain additional fields:
+
+| Offset | Field | Description |
+|---|---|---|
+| 8 | mytemp_f | Custom temperature setting |
+| 10-11 | hold_time_remaining | Seconds remaining in hold (big-endian) |
+| 14 | on_base | `0x00`=on-base, `0x01`=off-base |
+| 20 | error_code | Error indicator (0=no error) |
+| 22 | baby_mode | `0x01`=enabled, `0x00`=disabled |
+
+## Error States
+
+Error states are indicated by:
+- Suspicious temperature values (e.g., `0xB004` = 45060°F)
+- Non-zero error_code in extended status
+- Duplicate error values in multiple temperature fields
+
 ## Future Research
 
 Areas not yet fully understood:
 
-- **Payload bytes 9-13, 15-28:** Purpose unknown
-- **Mode byte variations:** Only normal (`0x00`) and keep-warm (`0x04`) modes confirmed
-- **Error codes:** No error reporting mechanism identified yet
+- **Error code meanings:** Specific error codes not yet documented
 - **Firmware updates:** OTA update mechanism (if any) not documented
-- **Additional commands:** May be additional command types not yet discovered
+- **Pairing mode activation:** How to put device into pairing mode
 
 ## References
 
@@ -393,9 +590,53 @@ Areas not yet fully understood:
 - **Test captures:** `offbase.json` and various log files
 - **Discussion:** Protocol analysis throughout development conversation
 
+## ACK-Based Communication
+
+V1 protocol supports ACK (acknowledgment) packets:
+
+**Frame Type:** `0x12` (same as extended status)
+
+**ACK Packet Structure:**
+```
+A5 12 [seq] [len] [cs] [command_header] [payload]
+```
+
+The ACK mirrors the sequence number and command header from the original message. For registration/hello commands, the payload indicates success:
+- `0x00`: Success
+- Other values: Failure
+
+**Recommended Flow:**
+1. Send command with sequence number
+2. Wait for ACK with matching sequence number (timeout: 1-2 seconds)
+3. Check ACK payload for success indicator
+4. Retry or handle failure as needed
+
+This replaces timing-based delays with proper protocol acknowledgments.
+
+## Operating Modes
+
+| Mode | Value | Temperature | Description |
+|---|---|---|---|
+| Green Tea | 0x01 | 180°F | Optimal for green tea |
+| Oolong | 0x02 | 195°F | Optimal for oolong tea |
+| Coffee | 0x03 | 205°F | Optimal for coffee |
+| Boil | 0x04 | 212°F | Full boil |
+| My Temp | 0x05 | Custom | User-defined temperature |
+| Heat (V0) | 0x06 | Variable | Generic heating mode |
+
+## Heating Stages
+
+| Stage | Value | Description |
+|---|---|---|
+| Idle | 0x00 | Not heating |
+| Heating | 0x01 | Actively heating |
+| Almost Done | 0x02 | Near target temperature |
+| Keep Warm | 0x03 | Holding temperature |
+
 ---
 
-**Document Version:** 1.0
-**Last Updated:** 2025-11-06
+**Document Version:** 2.0
+**Last Updated:** 2024-12-29
 **Kettle Model:** Cosori Smart Electric Kettle
 **Authors:** Reverse-engineered through BLE packet analysis
+**Protocol Versions:** V0 (legacy), V1 (current)
