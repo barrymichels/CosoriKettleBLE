@@ -104,6 +104,10 @@ switch:
 
 **That's it!** Just find your kettle's MAC address (see below) and you're ready to go.
 
+### Native Home Assistant Integration
+
+If you'd prefer a native HA integration (no ESP32 required), check out [ha-cosori-kettle](https://github.com/rygwdn/ha-cosori-kettle) by [@rygwdn](https://github.com/rygwdn).
+
 ## Climate Entity & Thermostat Card
 
 The kettle **automatically appears as a climate entity** in Home Assistant when you add the component! This means you can use the beautiful native **thermostat card** with its semi-circle temperature slider right away.
